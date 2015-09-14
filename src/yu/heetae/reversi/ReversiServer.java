@@ -15,6 +15,7 @@ import java.util.Arrays;
 public class ReversiServer {
 
     private static ArrayList<ServerHandler> clientList;
+    private static Square[][] board = new Square[8][8];
 
     public static void main(String[] args) {
         clientList = new ArrayList<ServerHandler>();
@@ -25,9 +26,9 @@ public class ReversiServer {
             while(true) {
                 Socket client = s.accept();
                 ServerHandler ServerHandler = new ReversiServer().new ServerHandler(client);
-                if(i==1) ServerHandler.setClientStatus(1);
-                else if(i==2) ServerHandler.setClientStatus(2);
-                else ServerHandler.setClientStatus(0);
+                if(i==1) ServerHandler.setClientStatus(0);
+                else if(i==2) ServerHandler.setClientStatus(1);
+                else ServerHandler.setClientStatus(-1);
                 clientList.add(ServerHandler);
                 System.out.println("Spawning connection number" + i);
                 System.out.println(ServerHandler.getClientStatus());
@@ -46,7 +47,7 @@ public class ReversiServer {
         private Socket incoming;
         private ObjectInputStream ois;
         private ObjectOutputStream oos;
-        private int clientStatus = 0;	//if 0 client is an observer, if 1 client is player 1, if 2 client is player 2
+        private int clientStatus = -1;	//if -1 client is an observer, if 0 client is player 1, if 1 client is player 2
 
         public ServerHandler(Socket s) {
             incoming = s;
@@ -82,26 +83,18 @@ public class ReversiServer {
 
             while(true) {
                 try {
-					/*
-					int[] message = (int[])ois.readObject();
-					System.out.println(Arrays.toString(message));
-					sendToAll(message, this);
-					 */
                     Object message = ois.readObject();
-                    if(message instanceof int[]) {
-                        int[] moves = (int[])message;
-                        sendToAll(moves, this);
-                    }
-                    else if(message instanceof String) {
-                        String gameInfo = (String)message;
-                        sendToAll(gameInfo, this);
-                    }
-                    else if(message instanceof Integer){
+
+                    if(message instanceof Integer){
                         clientList.remove(this);
-                        if(getClientStatus()==1 || getClientStatus()==2) {
-                            clientList.get(0).setClientStatus(1);
-                            clientList.get(1).setClientStatus(2);
+                        if(getClientStatus()==0 || getClientStatus()==1) {
+                            clientList.get(0).setClientStatus(0);
+                            clientList.get(1).setClientStatus(1);
                         }
+                    }
+                    else {
+                        Message mess = (Message) message;
+                        sendToAll(mess, this);
                     }
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -117,6 +110,22 @@ public class ReversiServer {
 
 
     public void sendToAll(int[] message, ServerHandler sh) {
+
+        for(ServerHandler client : clientList) {
+            try {
+                if(client != sh) {
+                    client.oos.writeObject(message);
+                }
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            //client.out(message);
+        }
+    }
+
+
+    public void sendToAll(Message message, ServerHandler sh) {
 
         for(ServerHandler client : clientList) {
             try {

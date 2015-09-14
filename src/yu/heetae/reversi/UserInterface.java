@@ -9,6 +9,7 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseListener;
 import java.io.IOException;
 
 /**
@@ -16,7 +17,7 @@ import java.io.IOException;
  */
 public class UserInterface {
 
-    private Square[][] board = new Square[8][8];
+    private JButton[][] board = new JButton[8][8];
     private final int WHITE = 0;
     private final int BLACK = 1;
     private final int EMPTY = -1;
@@ -34,9 +35,17 @@ public class UserInterface {
     private Font scoreFont = new Font("Ariel", Font.BOLD, 20);
     private Font winnerFont = new Font("Ariel", Font.BOLD, 20);
 
+    private JLabel whiteScore;
+    private JLabel blackScore;
+    private JLabel infoLabel;
+
     //Borders
     private Border gridBorder = new LineBorder(Color.WHITE, 1);
 
+    //array containing x increment values for each direction, e.g. to check north increment by -1 in x direction
+    private int[] xDirection = {0, 1, 0, -1, 1, -1, 1, -1};
+    //array containing y increment values for each direction
+    private int[] yDirection = {-1, 0, 1, 0, -1, -1, 1, 1};
 
     public UserInterface(){
 
@@ -78,9 +87,9 @@ public class UserInterface {
         //Initialize/Setup JButton 8x8 grid that will be the game board
         for(int i=0; i<8; i++) {
             for(int j=0; j<8; j++) {
-                board[i][j] = new Square();
-                //board[i][j].setBackground(boardGreen);
-                //board[i][j].setOpaque(true);
+                board[i][j] = new JButton();
+                board[i][j].setBackground(boardGreen);
+                board[i][j].setOpaque(true);
 
                 //Set Borders For Game Board
                 //Top row
@@ -129,9 +138,27 @@ public class UserInterface {
 
                 //Add JButtons to board panel
                 boardPanel.add(board[i][j]);
+                board[i][j].putClientProperty("column", i);
+                board[i][j].putClientProperty("row", j);
+
+
             }
         }
 
+        board[3][3].setDisabledIcon(whitePiece);
+        board[4][4].setDisabledIcon(whitePiece);
+        board[3][4].setDisabledIcon(blackPiece);
+        board[4][3].setDisabledIcon(blackPiece);
+
+        board[3][3].setIcon(whitePiece);
+        board[4][4].setIcon(whitePiece);
+        board[3][4].setIcon(blackPiece);
+        board[4][3].setIcon(blackPiece);
+
+        board[3][3].setDisabledIcon(whitePiece);
+        board[4][4].setDisabledIcon(whitePiece);
+        board[3][4].setDisabledIcon(blackPiece);
+        board[4][3].setDisabledIcon(blackPiece);
 
         //Panel containing game information
         JPanel infoPanel = new JPanel();
@@ -150,7 +177,7 @@ public class UserInterface {
         blackPlayer.setFont(playerFont);
 
         //Label indicating black player score
-        JLabel blackScore = new JLabel("2");
+        blackScore = new JLabel("2");
         blackScore.setForeground(Color.WHITE);
         blackScore.setFont(scoreFont);
 
@@ -160,12 +187,12 @@ public class UserInterface {
         whitePlayer.setFont(playerFont);
 
         //Label indicating white player score
-        JLabel whiteScore = new JLabel("2");
+        whiteScore = new JLabel("2");
         whiteScore.setForeground(Color.WHITE);
         whiteScore.setFont(scoreFont);
 
         //Label indicating game information such as who's turn, winner, loser, etc...
-        JLabel infoLabel = new JLabel();
+        infoLabel = new JLabel();
         infoLabel.setForeground(Color.WHITE);
         infoLabel.setFont(winnerFont);
 
@@ -185,92 +212,25 @@ public class UserInterface {
     }
 
 
-    //For an empty square determine in which directions disks will be flipped if any at all
-    private boolean[] searchDirectionsToFlip(int row, int col) {
+    public void flip(boolean[] directionsToFlip, int row, int col, int color) {
 
-        //boolean array, indices indicating if pieces will flipped in certain directions
-        //Directions in from index 0 to 7: N, E, S, W, NE, NW, SE, SW
-        boolean[] directionsToFlip = new boolean[8];
+        ImageIcon piece;
 
-        //array containing x increment values for each direction, e.g. to check north increment by -1 in x direction
-        int[] xDirection = {-1, 0, 0, 1, 1, 0, 0, -1};
-        //array containing y increment values for each direction
-        int[] yDirection = {0, 1, 0, -1, 1, -1, 1, -1};
-
+        if (color == WHITE) piece = whitePiece;
+        else piece = blackPiece;
 
         //temp variables to reset row and col to original values
         int originalRow = row;
         int originalCol = col;
 
-        for(int i=0; i<8; ++i) {
-
-            //reset row/col to original values
-            row = originalRow;
-            col = originalCol;
-
-            //Set increments depending on direction
-            int xIncrement = xDirection[i];
-            int yIncrement = yDirection[i];
-
-            //if adjacent square does not have an opponent piece, no pieces to flip in direction
-            if(board[row += xIncrement][col += yIncrement].getStatus() != opponentColor) {
-                directionsToFlip[i] = false;
-            }
-            //else check if there are pieces to flip in direction
-            else {
-                directionsToFlip[i] = checkDirection(row, col, xIncrement, yIncrement);
-                //if checkDirection returns true set square as a valid move
-                if(directionsToFlip[i] == true) board[originalRow][originalCol].setIsValidMove(true);
-            }
-
-        }
-
-        return directionsToFlip;
-    }
-
-    private boolean checkDirection(int row, int col, int xIncrement, int yIncrement) {
-
-        //Make sure squares being checked are in bounds
-        for (; (row < 8 && row >= 0) || (col < 8 && col >= 0); ) {
-
-            //increment row/col
-            row += xIncrement;
-            col += yIncrement;
-
-            //Empty square, so not a valid move in this direction
-            if (board[row][col].getStatus() == EMPTY) return false;
-                //Player Color, so valid move
-            else if (board[row][col].getStatus() == playerColor) return true;
-        }
-        return false;
-    }
-
-
-    public void flipDisks(int row, int col, int diskColor) {
-        Square square = board[row][col];
-
-        //Determine color to flip disks to
-        ImageIcon disk;
-        if(diskColor == WHITE) disk = whitePiece;
-        else disk = blackPiece;
-
-        //Get directions to flip
-        boolean[] directionsToFlip = board[row][col].getDirectionsToFlip();
-
-        //array containing x increment values for each direction, e.g. to check north increment by -1 in x direction
-        int[] xDirection = {-1, 0, 0, 1, 1, 0, 0, -1};
-        //array containing y increment values for each direction
-        int[] yDirection = {0, 1, 0, -1, 1, -1, 1, -1};
-
-
-        //temp variables to reset row and col to original values
-        int originalRow = row;
-        int originalCol = col;
-
-        //Set square's icon and make it a non valid move
-        square.setIcon(disk);
+        //update square's status and make it a non valid move
+        board[row][col].setIcon(piece);
+        board[row][col].setDisabledIcon(piece);
+        board[row][col].setEnabled(false);
+        board[row][col].setBackground(boardGreen);
 
         for (int i = 0; i < 8; i++) {
+
             //reset row/col to original values
             row = originalRow;
             col = originalCol;
@@ -280,23 +240,94 @@ public class UserInterface {
                 //Set increments depending on direction
                 int xIncrement = xDirection[i];
                 int yIncrement = yDirection[i];
+
                 //while the square doesn't have a disk of players color keep flipping disks
-                while (board[row += xIncrement][col += yIncrement].getStatus() != diskColor) {
-                    board[row][col].setIcon(disk);
+                while(board[row += yIncrement][col += xIncrement].getIcon() != piece) {
+                    board[row][col].setIcon(piece);
+                    board[row][col].setEnabled(false);
+                    board[row][col].setDisabledIcon(piece);
+                }
+
+            }
+        }
+    }
+
+    public void setScore(int whiteScore, int blackScore) {
+        this.whiteScore.setText(Integer.toString(whiteScore));
+        this.blackScore.setText(Integer.toString(blackScore));
+    }
+
+
+    public void setListeners(ActionListener actionListener, MouseListener mouseListener) {
+        for(int i=0; i<8; i++) {
+            for(int j=0; j<8; j++) {
+                board[i][j].addActionListener(actionListener);
+                board[i][j].addMouseListener(mouseListener);
+            }
+        }
+    }
+
+    public void setInfoLabel(String info) {
+        switch(info) {
+            case "Your Turn":
+                infoLabel.setText("<html><div style=\"text-align: center;\">" + "YOUR TURN" + "</html>");
+                break;
+            case "Opponent Turn":
+                infoLabel.setText("<html><div style=\"text-align: center;\">" + "OPPONENT'S<br>TURN" + "</html>");
+                break;
+            case "You Lose":
+                infoLabel.setText("<html><div style=\"text-align: center;\">" + "GAME OVER<br>YOU LOSE" + "</html>");
+                break;
+            case "You Win":
+                infoLabel.setText("<html><div style=\"text-align: center;\">" + "GAME OVER<br>YOU WIN" + "</html>");
+                break;
+            case "Tie":
+                infoLabel.setText("<html><div style=\"text-align: center;\">" + "GAME OVER<br>TIE GAME" + "</html>");
+                break;
+            default:
+                infoLabel.setText(null);
+        }
+    }
+
+    public void resetBoard() {
+        for(int i=0; i<8; i++) {
+            for(int j=0; j<8; j++) {
+                board[i][j].setIcon(null);
+                board[i][j].setDisabledIcon(null);
+            }
+        }
+        board[3][3].setDisabledIcon(whitePiece);
+        board[4][4].setDisabledIcon(whitePiece);
+        board[3][4].setDisabledIcon(blackPiece);
+        board[4][3].setDisabledIcon(blackPiece);
+
+        board[3][3].setIcon(whitePiece);
+        board[4][4].setIcon(whitePiece);
+        board[3][4].setIcon(blackPiece);
+        board[4][3].setIcon(blackPiece);
+
+        board[3][3].setDisabledIcon(whitePiece);
+        board[4][4].setDisabledIcon(whitePiece);
+        board[3][4].setDisabledIcon(blackPiece);
+        board[4][3].setDisabledIcon(blackPiece);
+    }
+
+    public void enableButtons() {
+        for(int i=0; i<8; i++) {
+            for(int j=0; j<8; j++) {
+                if(board[i][j].getIcon() != whitePiece || board[i][j].getIcon() != blackPiece) {
+                    board[i][j].setEnabled(true);
                 }
             }
         }
     }
 
-    public void startTurn(int row, int col, int diskColor) {
-
-        for(int i=0; i<8; row++) {
-            for(int j=0; j<8; col++) {
-                if(board[i][j].getStatus() == EMPTY) {
-                    searchDirectionsToFlip(row, col);
-                }
+    public void disableButtons() {
+        for(int i=0; i<8; i++) {
+            for(int j=0; j<8; j++) {
+                board[i][j].setEnabled(false);
             }
-        }   //end for loop
+        }
     }
 
 

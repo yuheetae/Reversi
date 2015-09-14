@@ -20,18 +20,20 @@ public class GameLogic {
     private final int EMPTY = -1;
     private int playerColor;
     private int opponentColor;
-    private int playerScore = 2;
-    private int opponentScore = 2;
 
-    private ImageIcon whitePiece;
-    private ImageIcon blackPiece;
+    private int whiteScore = 2;
+    private int blackScore = 2;
 
-    //Borders
-    private Border gridBorder = new LineBorder(Color.WHITE, 1);
+    //index 0 = N, 1 = E, 2 = S, 3 = W, 4 = NE, 5 = NW, 6 = SE, 7 = SW
+
+    //array containing x increment values for each direction, e.g. to check north increment by -1 in x direction
+    private int[] xDirection = {0, 1, 0, -1, 1, -1, 1, -1};
+    //array containing y increment values for each direction
+    private int[] yDirection = {-1, 0, 1, 0, -1, -1, 1, 1};
 
     public GameLogic(int playerColor) {
 
-        //Set play and opponent colors
+        //Set player and opponent colors
         if(playerColor == BLACK) {
             this.playerColor = BLACK;
             opponentColor = WHITE;
@@ -41,36 +43,17 @@ public class GameLogic {
             opponentColor = BLACK;
         }
 
+        //reset board to starting state
         resetBoard();
-
-        //Initialize Image variables for white/black pieces
-        Image blackImg = null;
-        Image whiteImg = null;
-
-        try {
-            //read in black/white pieces from file
-            blackImg = ImageIO.read(UserInterface.class.getResource("/res/blackpiece.png"));
-            whiteImg = ImageIO.read(UserInterface.class.getResource("/res/whitepiece.png"));
-        } catch (IOException e) {
-
-        }
-
-        //Set black/white piece ImageIcons
-        blackPiece = new ImageIcon(blackImg.getScaledInstance(43, 43, Image.SCALE_SMOOTH));
-        whitePiece = new ImageIcon(whiteImg.getScaledInstance(43, 43, Image.SCALE_SMOOTH));
-
     }
 
-
-    private void resetBoard() {
+    //Resets board to starting state
+    public void resetBoard() {
 
         //Reinitialize square objects
         for(int i=0; i<8; i++) {
             for(int j=0; j<8; j++) {
                 board[i][j] = new Square();
-                board[i][j].addActionListener(new listener());
-                board[i][j].putClientProperty("column", i);
-                board[i][j].putClientProperty("row", j);
             }
         }
 
@@ -116,28 +99,44 @@ public class GameLogic {
         }
 
         //Reset game score
-        playerScore = opponentScore = 2;
+        whiteScore = blackScore = 2;
     }
 
+    //Iterate through board to determine which boards have valid moves, and returns number of valid moves
+    public int checkForMoves() {
+        int numberOfValidMoves = 0;
 
-    //For an empty square determine in which directions disks will be flipped if any at all
-    private boolean[] searchDirectionsToFlip(int row, int col) {
+        for(int i=0; i<8; i++) {
+            for(int j=0; j<8; j++) {
+                //if square is not occupied by a piece check if valid move
+                if(board[i][j].getStatus() == EMPTY) {
+                    //set square's directionsToFlip array
+                    searchDirectionsToFlip(i, j);
+                    //if the square is a valid move increment numberOfValidMoves
+                    if(board[i][j].isValidMove()) {
+                        numberOfValidMoves++;
+                    }
+                }
+            }
+        }   //end for loop
+
+        return numberOfValidMoves;
+    }
+
+    //Determines in which directions pieces will be flipped for a square, sets square's directionToFlip array
+    private void searchDirectionsToFlip(int row, int col) {
 
         //boolean array, indices indicating if pieces will flipped in certain directions
         //Directions in from index 0 to 7: N, E, S, W, NE, NW, SE, SW
         boolean[] directionsToFlip = new boolean[8];
 
-        //array containing x increment values for each direction, e.g. to check north increment by -1 in x direction
-        int[] xDirection = {-1, 0, 0, 1, 1, 0, 0, -1};
-        //array containing y increment values for each direction
-        int[] yDirection = {0, 1, 0, -1, 1, -1, 1, -1};
-
+        boolean isValid = false;
 
         //temp variables to reset row and col to original values
         int originalRow = row;
         int originalCol = col;
 
-        for(int i=0; i<8; ++i) {
+        for(int i=0; i<8; i++) {
 
             //reset row/col to original values
             row = originalRow;
@@ -147,91 +146,69 @@ public class GameLogic {
             int xIncrement = xDirection[i];
             int yIncrement = yDirection[i];
 
-            //if adjacent square does not have an opponent piece, no pieces to flip in direction
-            if(board[row += xIncrement][col += yIncrement].getStatus() != opponentColor) {
-                directionsToFlip[i] = false;
-            }
-            //else check if there are pieces to flip in direction
-            else {
-                directionsToFlip[i] = checkDirection(row, col, xIncrement, yIncrement);
-                //if checkDirection returns true set square as a valid move
-                if(directionsToFlip[i] == true) board[originalRow][originalCol].setIsValidMove(true);
-            }
+            //System.out.println("Row: " + row + "    Col: " + col + "   i: " + i);
+
+            directionsToFlip[i] = checkDirection(row, col, xIncrement, yIncrement);
+
+            if(directionsToFlip[i] == true) isValid |= true;
 
         }
 
-        return directionsToFlip;
+        board[originalRow][originalCol].setIsValidMove(isValid);
+        board[row][col].setDirectionsToFlip(directionsToFlip);
     }
 
+    //Check if a square has a valid move in a direction
     private boolean checkDirection(int row, int col, int xIncrement, int yIncrement) {
 
-        //Make sure squares being checked are in bounds
-        for (; (row < 8 && row >= 0) || (col < 8 && col >= 0); ) {
+        //increment row/col
+        row += yIncrement;
+        col += xIncrement;
 
-            //increment row/col
-            row += xIncrement;
-            col += yIncrement;
+        if(row > 7 || row < 0 || col > 7 || col < 0) return false;
+
+        //if first adjacent square has player piece or empty, no pieces to flip in direction, return false
+        if(board[row][col].getStatus() == playerColor || board[row][col].getStatus() == EMPTY) return false;    //edit error
+
+        //increment row/col
+        row += yIncrement;
+        col += xIncrement;
+
+        //Make sure squares being checked are in bounds
+        while(row < 8 && row >= 0 && col < 8 && col >= 0) {
 
             //Empty square, so not a valid move in this direction
             if (board[row][col].getStatus() == EMPTY) return false;
             //Player Color, so valid move
             else if (board[row][col].getStatus() == playerColor) return true;
+
+            //increment row/col
+            row += yIncrement;
+            col += xIncrement;
         }
         return false;
     }
 
-    public class listener implements ActionListener {
-        public void actionPerformed(ActionEvent e) {
-            Square square = (Square) e.getSource();
-            square.setIcon(blackPiece);
-        }
-    }
+    //Flip disks
+    public void flipDisks(boolean[] directionsToFlip, int row, int col, int color) {
 
-    public class boardSquareListener implements ActionListener {
-        public void actionPerformed(ActionEvent e) {
-
-            //Get the square being clicked
-            Square square = (Square) e.getSource();
-
-            //If the square is not a valid move return
-            if (!square.isValidMove()) return;
-
-            //get square's index from client property
-            int row = (int) square.getClientProperty("row");
-            int col = (int) square.getClientProperty("column");
-
-            flipDisks(row, col, playerColor);
-
-        }
-    }   //end of boardSquareListener
-
-    public void flipDisks(int row, int col, int diskColor) {
-
-        Square square = board[row][col];
-
-        //Determine color to flip disks to
-        ImageIcon disk;
-        if(diskColor == WHITE) disk = whitePiece;
-        else disk = blackPiece;
+        int scoreIncrement = 0;
 
         //Get directions to flip
-        boolean[] directionsToFlip = board[row][col].getDirectionsToFlip();
-
-        //array containing x increment values for each direction, e.g. to check north increment by -1 in x direction
-        int[] xDirection = {-1, 0, 0, 1, 1, 0, 0, -1};
-        //array containing y increment values for each direction
-        int[] yDirection = {0, 1, 0, -1, 1, -1, 1, -1};
-
+        if(directionsToFlip ==null) {
+            directionsToFlip = board[row][col].getDirectionsToFlip();
+        }
 
         //temp variables to reset row and col to original values
         int originalRow = row;
         int originalCol = col;
 
-        //Set square's icon and make it a non valid move
-        square.setIcon(disk);
-        square.setIsValidMove(false);
+        //update square's status and make it a non valid move
+        board[row][col].setStatus(color);
+        board[row][col].setIsValidMove(false);
 
         for (int i = 0; i < 8; i++) {
+
             //reset row/col to original values
             row = originalRow;
             col = originalCol;
@@ -241,94 +218,51 @@ public class GameLogic {
                 //Set increments depending on direction
                 int xIncrement = xDirection[i];
                 int yIncrement = yDirection[i];
+
                 //while the square doesn't have a disk of players color keep flipping disks
-                while (board[row += xIncrement][col += yIncrement].getStatus() != playerColor) {
-                    board[row][col].setIcon(disk);
+                while(board[row += yIncrement][col += xIncrement].getStatus() != color) {
+                    board[row][col].setStatus(color);
                     board[row][col].setIsValidMove(false);
+                    scoreIncrement++;
                 }
+
             }
         }
-    }
 
-    public void startTurn(int row, int col, int diskColor) {
-
-
-        for(int i=0; i<8; row++) {
-            for(int j=0; j<8; col++) {
-                if(board[i][j].getStatus() == EMPTY) {
-                    searchDirectionsToFlip(row, col);
-                }
-            }
-        }   //end for loop
-    }
-
-    public void endTurn() {
-
-    }
-
-    public JPanel buildBoard() {
-        //Panel for game board
-        JPanel boardPanel = new JPanel(new GridLayout(8,8,0,0));
-        boardPanel.setPreferredSize(new Dimension(400,400));
-        boardPanel.setBorder(gridBorder);
-
-        //Initialize/Setup JButton 8x8 grid that will be the game board
-        for(int i=0; i<8; i++) {
-            for(int j=0; j<8; j++) {
-                board[i][j] = new Square();
-                //board[i][j].setBackground(boardGreen);
-                //board[i][j].setOpaque(true);
-
-                //Set Borders For Game Board
-                //Top row
-                if (i==0) {
-                    if (j==0) {
-                        //Top left corner
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(4, 4, 2, 2, Color.BLACK));
-                    }
-                    else if(j==7) {
-                        //Top right corner
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(4, 0, 2, 4, Color.BLACK));
-                    }
-                    else {
-                        // Top edge
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(4, 0, 2, 2, Color.BLACK));
-                    }
-                }
-                //Bottom row
-                else if(i==7) {
-                    if(j==0) {
-                        //Bottom left corner
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(0, 4, 4, 2, Color.BLACK));
-                    }
-                    else if(j==7) {
-                        //Bottom right corner
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(0, 0, 4, 4, Color.BLACK));
-                    }
-                    else {
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(0, 0, 4, 2, Color.BLACK));
-                    }
-                }
-                else {
-                    if (j==0) {
-                        //Left-hand edge
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(0, 4, 2, 2, Color.BLACK));
-                    }
-                    else if(j==7) {
-                        //Right-hand edge
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(0, 0, 2, 4, Color.BLACK));
-                    }
-                    else {
-                        //Non-edge buttons
-                        board[i][j].setBorder(BorderFactory.createMatteBorder(0, 0, 2, 2, Color.BLACK));
-                    }
-                }
-
-                //Add JButtons to board panel
-                boardPanel.add(board[i][j]);
-            }
+        if(color == WHITE) {
+            whiteScore += scoreIncrement + 1;
+            blackScore -= scoreIncrement;
         }
-        return boardPanel;
+        else {
+            blackScore += scoreIncrement + 1;
+            whiteScore -= scoreIncrement;
+        }
+
+    }
+
+    public Square getSquare(int i, int j) {
+        return board[i][j];
+    }
+
+    public boolean[] getDirectionsToFlip(int row, int col) {
+        return board[row][col].getDirectionsToFlip();
+    }
+
+
+    public int getPlayerColor() {
+        return playerColor;
+    }
+
+    public int getOpponentColor() {
+        return opponentColor;
+    }
+
+    public int getBlackScore() {
+        return blackScore;
+    }
+
+    public int getWhiteScore() {
+        return whiteScore;
     }
 
 
