@@ -265,7 +265,13 @@ public class GameLogic {
         return whiteScore;
     }
 
+    public Square[][] getBoard() {
+        return board;
+    }
 
+    public void setBoard(Square[][] board) {
+        this.board = board;
+    }
 }
 
 

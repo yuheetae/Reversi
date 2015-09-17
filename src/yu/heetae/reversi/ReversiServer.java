@@ -15,19 +15,19 @@ import java.util.Arrays;
 public class ReversiServer {
 
     private static ArrayList<ServerHandler> clientList;
-    private static Square[][] board = new Square[8][8];
+    private static GameLogic logic = new GameLogic(-1);
 
     public static void main(String[] args) {
         clientList = new ArrayList<ServerHandler>();
         try {
-            int i=1;
+            int i=0;
             ServerSocket s = new ServerSocket(7077);
 
             while(true) {
                 Socket client = s.accept();
                 ServerHandler ServerHandler = new ReversiServer().new ServerHandler(client);
-                if(i==1) ServerHandler.setClientStatus(0);
-                else if(i==2) ServerHandler.setClientStatus(1);
+                if(i==0) ServerHandler.setClientStatus(0);
+                else if(i==1) ServerHandler.setClientStatus(1);
                 else ServerHandler.setClientStatus(-1);
                 clientList.add(ServerHandler);
                 System.out.println("Spawning connection number" + i);
@@ -72,15 +72,23 @@ public class ReversiServer {
 
         @Override
         public void run() {
-            // Handle Input and Response
             try {
+                //Notify client if they are playing or observing
                 oos.writeInt(getClientStatus());
                 oos.flush();
+
+                //If client is observing send the current board state
+                if(getClientStatus() == -1) {
+                    //oos.writeObject(new Message(0, 0, null, "initial state", logic.getBoard(), 0));
+                    oos.writeObject(logic.getBoard());
+                    oos.flush();
+                }
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
 
+            //Listen for Messages
             while(true) {
                 try {
                     Object message = ois.readObject();
@@ -93,8 +101,11 @@ public class ReversiServer {
                         }
                     }
                     else {
-                        Message mess = (Message) message;
-                        sendToAll(mess, this);
+                        Message m = (Message) message;
+                        if(m.getDirectionsToFlip() != null) {
+                            logic.flipDisks(m.getDirectionsToFlip(), m.getRow(), m.getCol(), m.getColor());
+                        }
+                        sendToAll(m, this);
                     }
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -107,23 +118,6 @@ public class ReversiServer {
 
         }
     }
-
-
-    public void sendToAll(int[] message, ServerHandler sh) {
-
-        for(ServerHandler client : clientList) {
-            try {
-                if(client != sh) {
-                    client.oos.writeObject(message);
-                }
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            //client.out(message);
-        }
-    }
-
 
     public void sendToAll(Message message, ServerHandler sh) {
 
@@ -140,20 +134,6 @@ public class ReversiServer {
         }
     }
 
-    //Send message that Game Over
-    public void sendToAll(String message, ServerHandler sh) {
 
-        for(ServerHandler client : clientList) {
-            try {
-                if(client != sh) {
-                    client.oos.writeObject(message);
-                }
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            //client.out(message);
-        }
-    }
 
 }

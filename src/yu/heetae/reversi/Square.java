@@ -8,9 +8,10 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.IOException;
+import java.io.Serializable;
 
 //Object Class for individual squares on reversi board
-public class Square {
+public class Square implements Serializable {
 
     private int status = -1;     //-1 = empty, 0 = white, 1 = black
 
@@ -49,27 +50,5 @@ public class Square {
         this.directionsToFlip = possibleMoves;
     }
 
-    /*
-    public class mouseListener implements MouseListener {
-        public void mouseEntered(MouseEvent e) {
-            if(isValidMove) setBackground(highlightYellow);
-        }
 
-        public void mouseExited(MouseEvent e) {
-            if(getBackground() == highlightYellow) setBackground(boardGreen);
-        }
-
-        public void mouseClicked(MouseEvent e) {
-
-        }
-
-        public void mousePressed(MouseEvent e) {
-
-        }
-
-        public void mouseReleased(MouseEvent e) {
-
-        }
-    }
-    */
 }

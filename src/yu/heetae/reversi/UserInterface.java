@@ -289,6 +289,21 @@ public class UserInterface {
         }
     }
 
+    public void setBoard(Square[][] squares) {
+        for(int i=0; i<8; i++) {
+            for(int j=0; j<8; j++) {
+                if(squares[i][j].getStatus() == WHITE) {
+                    board[i][j].setDisabledIcon(whitePiece);
+                    board[i][j].setIcon(whitePiece);
+                }
+                else if(squares[i][j].getStatus() == BLACK) {
+                    board[i][j].setDisabledIcon(blackPiece);
+                    board[i][j].setIcon(blackPiece);
+                }
+            }
+        }
+    }
+
     public void resetBoard() {
         for(int i=0; i<8; i++) {
             for(int j=0; j<8; j++) {

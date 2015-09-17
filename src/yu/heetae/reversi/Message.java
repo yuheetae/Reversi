@@ -9,14 +9,24 @@ public class Message implements Serializable{
 
     private int row;
     private int col;
+    private int color;
+    private int whiteScore;
+    private int blackScore;
     private boolean[] directionsToFlip;
     private String message;
+    private Square[][] board;
 
-    public Message(int row, int col, boolean[] directionsToFlip, String message) {
+    private final int WHITE = 0;
+    private final int BLACK = 1;
+    private final int EMPTY = -1;
+
+    public Message(int row, int col, boolean[] directionsToFlip, String message, Square[][] board, int color) {
         this.row = row;
         this.col = col;
         this.directionsToFlip = directionsToFlip;
         this.message = message;
+        this.board = board;
+        this.color = color;
     }
 
     public int getRow() {
@@ -33,5 +43,21 @@ public class Message implements Serializable{
 
     public String getMessage() {
         return message;
+    }
+
+    public Square[][] getBoard() {
+        return board;
+    }
+
+    public void setBoard(Square[][] board) {
+        this.board = board;
+    }
+
+    public int getColor() {
+        return color;
+    }
+
+    public void setColor(int color) {
+        this.color = color;
     }
 }

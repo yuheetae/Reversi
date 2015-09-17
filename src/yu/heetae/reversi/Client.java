@@ -13,7 +13,7 @@ import java.net.Socket;
 
 public class Client implements Runnable{
 
-    private static String host = "192.168.1.16";
+    private static String host = "172.20.210.129";//"192.168.1.16";
     private static int port = 7077;
     private Socket socket;
     private ObjectOutputStream oos;
@@ -31,7 +31,13 @@ public class Client implements Runnable{
     private Color boardGreen = new Color(57, 126, 88);
 
     private boolean isPlayerTurn;
-    private boolean isTieGame;
+
+    private int playerColor;
+    private int opponentColor;
+
+    private boolean noPossibleMoves = false;
+
+    private int clientType;
 
     public Client() {
         ui = new UserInterface();
@@ -41,59 +47,58 @@ public class Client implements Runnable{
     public void run() {
 
         try {
+            //Create socket and input/output streams
             socket = new Socket(host, port);
             System.out.println("CONNECTED");
             oos = new ObjectOutputStream(socket.getOutputStream());
             ois = new ObjectInputStream(socket.getInputStream());
 
-            int clientType = ois.readInt();
+            //server notifies user of clientType; 0 = white player, 1 = black player, -1 = observer
+            clientType = ois.readInt();
             System.out.println("client type: " + clientType);
 
+            //Create new logic object and get player/opponent colors
             logic = new GameLogic(clientType);
+            setPlayerColor(logic.getPlayerColor());
+            setOpponentColor(logic.getOpponentColor());
+
+            //if player is white disable buttons and wait for opponent's turn
             if(clientType == 0) {
                 ui.setInfoLabel("Opponent Turn");
                 ui.disableButtons();
             }
+
+            //if player is black start turn
             else if(clientType == 1) {
                 startTurn();
             }
+
             ui.setListeners(new buttonListener(), new mouseListener());
 
-            while(true) {
+            //Receive messages from server and process them
+            while (true) {
                 Object receivedMessage = ois.readObject();
-                if(receivedMessage instanceof String) {
-                    Object receivedMessage2 = ois.readObject();
-                    String gameOver = (String) receivedMessage;
-                    int[] opponentMoves = (int[]) receivedMessage2;
+
+                if(receivedMessage == null) continue;
+
+                //If user is an observer that just connected retrieve current board state from server
+                else if(receivedMessage instanceof Square[][]) {
+                    ui.setBoard((Square[][]) receivedMessage);
                 }
+
                 else {
                     Message message = (Message) receivedMessage;
-                    if(message != null) {
-                        int row = message.getRow();
-                        int col = message.getCol();
-                        boolean[] directionsToFlip = (boolean[]) message.getDirectionsToFlip();
-                        String mess = message.getMessage();
-
-                        logic.flipDisks(directionsToFlip, row, col, logic.getOpponentColor());
-                        ui.flip(directionsToFlip, row, col, logic.getOpponentColor());
-                        ui.setScore(logic.getWhiteScore(), logic.getBlackScore());
-
-                        if(message.getMessage() == "tie") {
-                            endGame();
+                    if(clientType == -1) {
+                        if(message.getDirectionsToFlip() != null){
+                            ui.flip(message.getDirectionsToFlip(), message.getRow(), message.getCol(), message.getColor());
                         }
-
-                    }
-                    else if(message == null) {
-                        isTieGame = true;
                     }
 
-                    if(logic.getWhiteScore() + logic.getBlackScore() == 64) {
-                        endGame();
-                    }
                     else {
-                        startTurn();
+                        registerMove(message);
                     }
                 }
+
             }
 
         } catch (IOException e1) {
@@ -103,6 +108,42 @@ public class Client implements Runnable{
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+
+    //Input opponent's move and decide whether to start turn or end game
+    public void registerMove(Message m) {
+
+        //Set Data from Message
+        int row = m.getRow();
+        int col = m.getCol();
+        boolean[] directionsToFlip = (boolean[]) m.getDirectionsToFlip();
+        String message = m.getMessage();
+
+        //flip disks in logic and ui
+        logic.flipDisks(directionsToFlip, row, col, opponentColor);
+        ui.flip(directionsToFlip, row, col, opponentColor);
+
+        //Set score in ui
+        ui.setScore(logic.getWhiteScore(), logic.getBlackScore());
+
+        //if opponent has not possible moves
+        if(message == "opponent has no moves") {
+            noPossibleMoves = true;
+        }
+        else if(message == "no more moves") {
+            endGame();
+        }
+
+        //if the board is full the game is over
+        if(logic.getWhiteScore() + logic.getBlackScore() == 64) {
+            endGame();
+        }
+        //else start users turn
+        else {
+            startTurn();
+        }
+
     }
 
     public int[] readMessage() {
@@ -138,16 +179,13 @@ public class Client implements Runnable{
 
             Square square = logic.getSquare(i, j);
 
-            int color = logic.getPlayerColor();
-
-
             if(square.isValidMove()) {
                 boolean[] directionToFlip = logic.getDirectionsToFlip(i, j);
-                logic.flipDisks(directionToFlip, i, j, logic.getPlayerColor());
-                ui.flip(directionToFlip, i, j, logic.getPlayerColor());
+                logic.flipDisks(directionToFlip, i, j, playerColor);
+                ui.flip(directionToFlip, i, j, playerColor);
                 ui.setScore(logic.getWhiteScore(), logic.getBlackScore());
 
-                endTurn(new Message(i, j, directionToFlip, null));
+                endTurn(new Message(i, j, directionToFlip, null, null, playerColor));
 
                 if(logic.getWhiteScore() + logic.getBlackScore() == 64) {
                     endGame();
@@ -172,18 +210,12 @@ public class Client implements Runnable{
             if(square.isValidMove() && isPlayerTurn) {
                 e.getComponent().setBackground(highlightYellow);
             }
-            else {
-                return;
-            }
         }
 
         @Override
         public void mouseExited(MouseEvent e) {
             if(square.isValidMove() && isPlayerTurn) {
                 e.getComponent().setBackground(boardGreen);
-            }
-            else {
-                return;
             }
         }
 
@@ -209,19 +241,24 @@ public class Client implements Runnable{
     }
 
     private void startTurn() {
+        //Indicate it is users turn
         isPlayerTurn = true;
+
+        //update board's valid moves and return # of possible moves
         int numberOfMoves = logic.checkForMoves();
+
+        //if no more possible moves...
         if(numberOfMoves == 0) {
             System.out.println("No possible moves");
-            if(isTieGame == true) {
-                sendMessage(new Message(0, 0, null, "tie"));
+
+            //both players have no more moves so end game
+            if(noPossibleMoves == true) {
+                sendMessage(new Message(0, 0, null, "no more moves", null, 0));
                 endGame();
             }
-            else {
-                isTieGame = false;
-                endTurn(null);
-            }
         }
+
+        //if there are possible moves enable buttons
         else {
             ui.setInfoLabel("Your Turn");
             ui.enableButtons();
@@ -229,9 +266,14 @@ public class Client implements Runnable{
     }
 
     private void endTurn(Message message) {
+        //Indicate it is not users turn
         isPlayerTurn = false;
-        ui.disableButtons();
+
+        //Disable buttons & set info label
+
         ui.setInfoLabel("Opponent Turn");
+
+        //Send message to server
         sendMessage(message);
     }
 
@@ -240,7 +282,8 @@ public class Client implements Runnable{
         int playerScore;
         int opponentScore;
 
-        if(logic.getPlayerColor() == WHITE) {
+        //set scores corresponding to piece color
+        if(playerColor == WHITE) {
             playerScore = logic.getWhiteScore();
             opponentScore = logic.getBlackScore();
         }
@@ -249,6 +292,10 @@ public class Client implements Runnable{
             opponentScore = logic.getWhiteScore();
         }
 
+        //disable buttons
+        ui.disableButtons();
+
+        //Determine outcome of game
         if(playerScore == opponentScore) ui.setInfoLabel("Tie");
         else if(playerScore > opponentScore) ui.setInfoLabel("You Win");
         else if(playerScore < opponentScore) ui.setInfoLabel("You Lose");
@@ -264,6 +311,21 @@ public class Client implements Runnable{
         */
     }
 
+    public int getPlayerColor() {
+        return playerColor;
+    }
+
+    public void setPlayerColor(int playerColor) {
+        this.playerColor = playerColor;
+    }
+
+    public int getOpponentColor() {
+        return opponentColor;
+    }
+
+    public void setOpponentColor(int opponentColor) {
+        this.opponentColor = opponentColor;
+    }
 
     public static void main(String[] args) throws IOException {
         Client client = new Client();
@@ -272,6 +334,7 @@ public class Client implements Runnable{
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
                 System.out.println("In shutdown hook");
+                client.sendMessage(new Message(0, 0, null, "disconnect", null, 0));
             }
         }, "Shutdown-thread"));
     }
