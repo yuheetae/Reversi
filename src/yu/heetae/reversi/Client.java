@@ -13,7 +13,7 @@ import java.net.Socket;
 
 public class Client implements Runnable{
 
-    private static String host = "172.20.210.129";//"192.168.1.16";
+    private static String host = "192.168.1.16";
     private static int port = 7077;
     private Socket socket;
     private ObjectOutputStream oos;
@@ -41,6 +41,7 @@ public class Client implements Runnable{
 
     public Client() {
         ui = new UserInterface();
+        ui.setListeners(new buttonListener(), new mouseListener());
     }
 
     @Override
@@ -72,8 +73,6 @@ public class Client implements Runnable{
             else if(clientType == 1) {
                 startTurn();
             }
-
-            ui.setListeners(new buttonListener(), new mouseListener());
 
             //Receive messages from server and process them
             while (true) {
@@ -334,7 +333,7 @@ public class Client implements Runnable{
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             public void run() {
                 System.out.println("In shutdown hook");
-                client.sendMessage(new Message(0, 0, null, "disconnect", null, 0));
+                //client.sendMessage(new Message(0, 0, null, "disconnect", null, 0));
             }
         }, "Shutdown-thread"));
     }
