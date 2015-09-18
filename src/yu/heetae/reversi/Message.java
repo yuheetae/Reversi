@@ -16,6 +16,7 @@ public class Message implements Serializable{
     private String message;
     private Square[][] board;
 
+
     private final int WHITE = 0;
     private final int BLACK = 1;
     private final int EMPTY = -1;
@@ -59,5 +60,21 @@ public class Message implements Serializable{
 
     public void setColor(int color) {
         this.color = color;
+    }
+
+    public int getWhiteScore() {
+        return whiteScore;
+    }
+
+    public void setWhiteScore(int whiteScore) {
+        this.whiteScore = whiteScore;
+    }
+
+    public int getBlackScore() {
+        return blackScore;
+    }
+
+    public void setBlackScore(int blackScore) {
+        this.blackScore = blackScore;
     }
 }

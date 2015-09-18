@@ -87,14 +87,14 @@ public class Client implements Runnable{
 
                 else {
                     Message message = (Message) receivedMessage;
-                    if(clientType == -1) {
-                        if(message.getDirectionsToFlip() != null){
-                            ui.flip(message.getDirectionsToFlip(), message.getRow(), message.getCol(), message.getColor());
-                        }
-                    }
 
+                    //if user is an observer
+                    if(clientType == -1) {
+                       processObserverMove(message);
+                    }
+                    //If user is playing
                     else {
-                        registerMove(message);
+                        processPlayerMove(message);
                     }
                 }
 
@@ -111,7 +111,7 @@ public class Client implements Runnable{
 
 
     //Input opponent's move and decide whether to start turn or end game
-    public void registerMove(Message m) {
+    public void processPlayerMove(Message m) {
 
         //Set Data from Message
         int row = m.getRow();
@@ -119,17 +119,22 @@ public class Client implements Runnable{
         boolean[] directionsToFlip = (boolean[]) m.getDirectionsToFlip();
         String message = m.getMessage();
 
-        //flip disks in logic and ui
-        logic.flipDisks(directionsToFlip, row, col, opponentColor);
-        ui.flip(directionsToFlip, row, col, opponentColor);
+        //if message contains a directionToFlip, flip pieces
+        if(directionsToFlip != null) {
 
-        //Set score in ui
-        ui.setScore(logic.getWhiteScore(), logic.getBlackScore());
+            //flip disks in logic and ui
+            logic.flipDisks(directionsToFlip, row, col, opponentColor);
+            ui.flip(directionsToFlip, row, col, opponentColor);
 
-        //if opponent has not possible moves
+            //Set score in ui
+            ui.setScore(logic.getWhiteScore(), logic.getBlackScore());
+        }
+
+        //if opponent has no moves
         if(message == "opponent has no moves") {
             noPossibleMoves = true;
         }
+        //if opponent and player have no moves end game
         else if(message == "no more moves") {
             endGame();
         }
@@ -142,6 +147,33 @@ public class Client implements Runnable{
         else {
             startTurn();
         }
+
+    }
+
+    public void processObserverMove(Message m) {
+
+        //Set Data from Message
+        int row = m.getRow();
+        int col = m.getCol();
+        boolean[] directionsToFlip = (boolean[]) m.getDirectionsToFlip();
+        String message = m.getMessage();
+        int color = m.getColor();
+        int whiteScore = m.getWhiteScore();
+        int blackScore = m.getBlackScore();
+
+        //if message contains a directionToFlip, flip pieces
+        if(directionsToFlip != null) {
+            ui.flip(directionsToFlip, row, col, color);
+            //Set score in ui
+            ui.setScore(whiteScore, blackScore);
+        }
+
+        if(whiteScore + blackScore == 64 || message == "no more moves") {
+            if(whiteScore > blackScore) ui.setInfoLabel("White Wins");
+            else if(whiteScore < blackScore) ui.setInfoLabel("Black Wins");
+            else ui.setInfoLabel("Tie");
+        }
+
 
     }
 
@@ -250,10 +282,15 @@ public class Client implements Runnable{
         if(numberOfMoves == 0) {
             System.out.println("No possible moves");
 
-            //both players have no more moves so end game
+            //opponent has no moves AND player has no moves
             if(noPossibleMoves == true) {
                 sendMessage(new Message(0, 0, null, "no more moves", null, 0));
                 endGame();
+            }
+
+            //opponent has no moves BUT player has moves
+            else {
+                sendMessage(new Message(0, 0, null, "opponent has no moves", null, 0));
             }
         }
 

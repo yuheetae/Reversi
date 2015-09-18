@@ -124,6 +124,10 @@ public class ReversiServer {
         for(ServerHandler client : clientList) {
             try {
                 if(client != sh) {
+                    if(client.getClientStatus() == -1){
+                        message.setWhiteScore(logic.getWhiteScore());
+                        message.setBlackScore(logic.getBlackScore());
+                    }
                     client.oos.writeObject(message);
                 }
             } catch (IOException e) {

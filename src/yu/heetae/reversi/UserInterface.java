@@ -281,6 +281,12 @@ public class UserInterface {
             case "You Win":
                 infoLabel.setText("<html><div style=\"text-align: center;\">" + "GAME OVER<br>YOU WIN" + "</html>");
                 break;
+            case "Black Wins":
+                infoLabel.setText("<html><div style=\"text-align: center;\">" + "GAME OVER<br>BLACK WINS" + "</html>");
+                break;
+            case "White Wins":
+                infoLabel.setText("<html><div style=\"text-align: center;\">" + "GAME OVER<br>WHITE WINS" + "</html>");
+                break;
             case "Tie":
                 infoLabel.setText("<html><div style=\"text-align: center;\">" + "GAME OVER<br>TIE GAME" + "</html>");
                 break;
