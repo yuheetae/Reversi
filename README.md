@@ -1,29 +1,18 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+New version of Reversi project. Less code and more efficient. Need MigLayout to compile/run.
 
-### What is this repository for? ###
+### Description ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+* Reversi game that allows two players to play against each other and others to view
 
-### How do I get set up? ###
+### Things to fix/complete ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* ability to restart game 
+* implement threadpool for observers/players
+* allow observers/players to switch out
+* function for if player leaves game 
 
-### Contribution guidelines ###
+### Things needed to run ###
 
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+* MigLayout
